@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<script>try{document.querySelector('meta[name="color-scheme"]').content=localStorage.getItem('ds-scheme')||'dark';}catch(e){}</script>
+<title>DENSE//DS — Ultra-Condensed Vanilla Design System</title>
+<meta name="description" content="Zero-build vanilla HTML5, CSS3, and ES6+ design system for telemetry consoles, ledgers, and ultra-dense operational interfaces.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/ds.css">
+<style>
+  html, body { height: auto; min-height: 100%; overflow: visible; }
+  body { overflow-x: clip; }
+
+  .wrap { width: 100%; max-width: 1240px; margin-inline: auto; padding-inline: 12px; }
+  .site-main { display: flex; flex-direction: column; gap: 20px; padding-block: 16px 28px; }
+
+  /* Sticky responsive header */
+  .site-header {
+    position: sticky; top: 0; z-index: 40;
+    block-size: var(--h-bar); background: var(--bg-1); border-bottom: 1px solid var(--ln);
+  }
+  .site-header.is-measuring * { transition: none !important; }
+  .header-inner {
+    display: flex; align-items: center; gap: 8px;
+    block-size: 100%; max-width: 1240px; margin-inline: auto; padding-inline: 12px;
+  }
+  .header-inner > * { flex-shrink: 0; white-space: nowrap; }
+  .header-inner > .spacer { flex: 1 1 auto; min-width: 0; }
+
+  .brand { display: inline-flex; align-items: center; gap: 8px; padding: 2px 4px 2px 0; border-radius: var(--r); }
+  .brand-t { font: 700 14px/1 var(--f-cond); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-0); }
+  .brand-t span { color: var(--fg-2); font-weight: 500; }
+  .btn-ic .lucide { vertical-align: middle; }
+  .btn-ic .when-dark, .btn-ic .when-light { line-height: 0; }
+
+  .site-nav { display: flex; align-items: center; gap: 4px; }
+  .menu-btn { anchor-name: --menu-btn; min-height: 24px; }
+  .site-menu {
+    position: fixed; inset: auto;
+    inset-block-start: calc(var(--h-bar) + 6px);
+    inset-block-start: anchor(--menu-btn bottom);
+    inset-inline-end: 12px;
+    inline-size: min(80dvw, 18rem);
+    max-inline-size: calc(100dvw - 24px);
+    block-size: fit-content;
+    max-block-size: calc(100dvh - 5rem);
+    margin: 4px 0 0; padding: 4px; overflow: auto;
+    background: var(--bg-2); color: var(--fg-0);
+    border: 1px solid var(--ln-2); border-radius: var(--r-2); box-shadow: var(--sh);
+  }
+  .site-menu a {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-block-size: 26px; padding: 4px 8px; border-radius: var(--r);
+    font: 500 12px/1 var(--f-ui); color: var(--fg-1);
+  }
+  .site-menu a:hover { background: var(--bg-3); color: var(--fg-0); }
+  .site-menu a[aria-current="page"] { background: var(--ac-bg); color: var(--ac); }
+
+  .site-header.is-wide .menu-btn { display: none; }
+  .site-header.is-wide .site-menu {
+    position: static; display: flex; align-items: center; gap: 2px;
+    inline-size: auto; max-inline-size: none; block-size: auto; max-block-size: none;
+    overflow: visible; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none;
+  }
+  .site-header.is-wide .site-menu::backdrop { display: none; }
+  .site-header.is-wide .site-menu a { min-block-size: 24px; padding: 0 7px; font-size: 11.5px; }
+
+  /* Hero */
+  .hero {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.32fr); gap: 12px; align-items: stretch;
+  }
+  .hero-copy {
+    display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+    padding: 12px; background: var(--bg-1); border: 1px solid var(--ln); border-radius: var(--r);
+  }
+  .hero-top { display: flex; flex-direction: column; gap: 8px; }
+  .hero-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .hero-h1 { font: 700 clamp(22px, 2.7vw, 31px)/1.08 var(--f-cond); letter-spacing: .01em; color: var(--fg-0); }
+  .hero-lead { font-size: 12.5px; line-height: 1.45; color: var(--fg-1); max-width: 52ch; }
+  .hero-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 2px; }
+  .hero-kpis { border-top: 1px solid var(--ln); margin: 0 -12px -12px; }
+
+  /* Live mini-workbench */
+  .wb-panel { overflow: hidden; }
+  .wb-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    padding: 5px 8px; background: var(--bg-1); border-bottom: 1px solid var(--ln);
+  }
+  .wb-kpis { border-bottom: 1px solid var(--ln); }
+  .wb-tbl-wrap {
+    overflow-x: auto; background: var(--bg-1);
+    --row-py: 3px; --row-fs: 11.5px; --th-h: 26px;
+  }
+  .wb-tbl-wrap[data-density="ultra"] { --row-py: 1px; --row-fs: 11px; --th-h: 22px; }
+  .wb-tbl-wrap[data-density="compact"] { --row-py: 3px; --row-fs: 11.5px; --th-h: 26px; }
+  .wb-tbl-wrap[data-density="standard"] { --row-py: 6px; --row-fs: 12px; --th-h: 30px; }
+  .wb-tbl-wrap .dt { min-inline-size: 520px; }
+  .wb-empty { padding: 14px 8px; text-align: center; color: var(--fg-2); font-size: 11.5px; }
+
+  /* Section chrome & grids */
+  .sec-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--ln); margin-bottom: 8px;
+  }
+  .sec-title { font: 700 13px/1 var(--f-cond); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-0); }
+  .sec-sub { font: 500 11px/1 var(--f-mono); color: var(--fg-2); }
+
+  .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .grid-demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+
+  .pillar .panel-b, .demo-card .panel-b { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; }
+  .pillar p, .demo-card p { font-size: 11.5px; line-height: 1.4; color: var(--fg-1); }
+
+  .demo-card { transition: border-color .12s, background-color .12s; }
+  .demo-card:hover { border-color: var(--ln-3); background: var(--bg-2); }
+  .demo-card:hover .demo-go { color: var(--ac); }
+  .demo-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: auto; padding-top: 6px; border-top: 1px solid var(--ln); font: 500 10.5px/1 var(--f-mono); color: var(--fg-2); }
+
+  /* Quickstart copy button & live region bubble */
+  .copy { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+  .copy-btn { min-inline-size: 24px; min-block-size: 24px; }
+  .copy-btn .ic-ok { display: none; }
+  .copy-btn[data-copied] { border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: var(--ok-bg); color: var(--ok); }
+  .copy-btn[data-copied] .ic-cp { display: none; }
+  .copy-btn[data-copied] .ic-ok { display: inline-block; }
+  .copy-btn[data-failed] { border-color: color-mix(in srgb, var(--er) 45%, transparent); background: var(--er-bg); color: var(--er); }
+  .copy-tip {
+    font: 500 10.5px/1 var(--f-mono); color: var(--ok);
+    opacity: 0; transition: opacity .15s; white-space: nowrap;
+  }
+  .copy-btn[data-copied] + .copy-tip { opacity: 1; color: var(--ok); }
+  .copy-btn[data-failed] + .copy-tip { opacity: 1; color: var(--er); }
+
+  .qs-code { border: 0; border-radius: 0; padding: 10px 12px; max-inline-size: 100%; }
+
+  /* Footer */
+  .site-footer {
+    border-top: 1px solid var(--ln); background: var(--bg-1);
+    padding-block: 10px; font-size: 11px; color: var(--fg-2);
+  }
+  .footer-inner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  }
+  .footer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .footer-links a:hover { color: var(--fg-0); text-decoration: underline; text-underline-offset: 2px; }
+
+  @media (max-width: 1020px) {
+    .hero { grid-template-columns: minmax(0, 1fr); }
+    .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 600px) {
+    .grid-4 { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (forced-colors: active) {
+    .site-menu a[aria-current="page"] { outline: 2px solid Highlight; }
+  }
+</style>
+</head>
+<body>
+  <header class="site-header" id="site-header">
+    <div class="header-inner" id="header-inner">
+      <a href="index.html" class="brand" aria-current="page">
+        <span class="rail-logo" aria-hidden="true">DS</span>
+        <span class="brand-t">DENSE<span>//DS</span></span>
+      </a>
+      <div class="spacer"></div>
+      <nav class="site-nav" aria-label="Primary">
+        <button type="button" class="btn btn-ghost btn-sm menu-btn" popovertarget="site-menu" popovertargetaction="toggle" aria-controls="site-menu" aria-expanded="false">
+          <svg class="lucide i14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+          <span>Menu</span>
+        </button>
+        <ul id="site-menu" class="site-menu" popover="auto">
+          <li><a href="catalog.html">Catalog</a></li>
+          <li><a href="demo-telemetry.html">Telemetry</a></li>
+          <li><a href="demo-ledger.html">Ledger</a></li>
+          <li><a href="demo-inventory.html">Inventory</a></li>
+          <li><a href="demo-picker.html">Pickers</a></li>
+          <li><a href="https://github.com/vberkoz/dense" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        </ul>
+      </nav>
+      <button type="button" class="btn btn-ghost btn-ic" data-action="theme">
+        <span class="when-dark">
+          <svg class="lucide i14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          <span class="vh">Switch to light theme</span>
+        </span>
+        <span class="when-light">
+          <svg class="lucide i14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          <span class="vh">Switch to dark theme</span>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap site-main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="hero-top">
+          <div class="hero-badges">
+            <span class="badge b-ok b-dot">V2.4 SPEC</span>
+            <span class="badge b-ac">ZERO-BUILD VANILLA</span>
+            <span class="badge b-mu">FILE:// + HTTPS</span>
+          </div>
+          <h1 id="hero-title" class="hero-h1">Ultra-condensed vanilla UI for data-dense web apps</h1>
+          <p class="hero-lead">
+            Semantic HTML5, native <code>light-dark()</code> CSS tokens, and zero-dependency ES6+ controls built for telemetry fleets, double-entry ledgers, and operational matrices.
+          </p>
+          <div class="hero-ctas">
+            <a href="catalog.html" class="btn btn-pri">
+              <svg class="lucide i14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7Z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg>
+              <span>Explore Catalog</span>
+            </a>
+            <a href="#demos" class="btn">Live Demos</a>
+            <a href="https://github.com/vberkoz/dense" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">GitHub</a>
+          </div>
+        </div>
+
+        <div class="kpis hero-kpis">
+          <div class="tile">
+            <div class="tile-k">Framework Deps</div>
+            <div class="tile-v">0 B</div>
+            <div class="tile-f"><span class="t-meta">No bundler / npm</span></div>
+          </div>
+          <div class="tile">
+            <div class="tile-k">Header Height</div>
+            <div class="tile-v">26px</div>
+            <div class="tile-f"><span class="t-meta">22px ultra mode</span></div>
+          </div>
+          <div class="tile">
+            <div class="tile-k">Color Tokens</div>
+            <div class="tile-v">light-dark()</div>
+            <div class="tile-f"><span class="t-meta">meta color-scheme</span></div>
+          </div>
+          <div class="tile">
+            <div class="tile-k">Runtime Mode</div>
+            <div class="tile-v">file://</div>
+            <div class="tile-f"><span class="t-meta">Static HTTPS ready</span></div>
+          </div>
+        </div>
+      </div>
+
+      <section class="panel wb-panel" aria-label="Live interactive workbench">
+        <div class="panel-h">
+          <span class="panel-t"><span class="dot ok pulse" aria-hidden="true"></span> LIVE WORKBENCH // DS.CSS</span>
+          <div class="spacer"></div>
+          <span class="badge b-mu">NATIVE PRIMITIVES</span>
+          <button type="button" class="btn btn-xs" id="wb-inspect-active" data-open="wb-dialog">Inspect</button>
+        </div>
+
+        <div class="wb-bar">
+          <div class="seg seg-sm" id="wb-density-seg" data-seg aria-label="Table density">
+            <button type="button" value="ultra" aria-pressed="false">Ultra</button>
+            <button type="button" value="compact" aria-pressed="true">Compact</button>
+            <button type="button" value="standard" aria-pressed="false">Std</button>
+          </div>
+          <div class="seg seg-sm" id="wb-filter-seg" data-seg aria-label="Status filter">
+            <button type="button" value="all" aria-pressed="true">All</button>
+            <button type="button" value="ok" aria-pressed="false">OK</button>
+            <button type="button" value="warn" aria-pressed="false">Warn</button>
+            <button type="button" value="crit" aria-pressed="false">Crit</button>
+          </div>
+          <div class="spacer"></div>
+          <div class="inp-ic has-end" style="width:170px">
+            <svg class="lucide i12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="search" id="wb-search" class="inp inp-sm mono" placeholder="Filter modules…" data-hotkey="search" aria-label="Filter workbench modules">
+            <span class="kbd">/</span>
+          </div>
+        </div>
+
+        <div class="kpis wb-kpis">
+          <div class="tile">
+            <div class="tile-k">Visible Rows</div>
+            <div class="tile-v" id="wb-visible">6 / 6</div>
+          </div>
+          <div class="tile">
+            <div class="tile-k">Header Height</div>
+            <div class="tile-v" id="wb-header-h">26px</div>
+          </div>
+          <div class="tile">
+            <div class="tile-k">Core CSS+JS</div>
+            <div class="tile-v">50.6+64.5 <small>KB</small></div>
+          </div>
+          <div class="tile">
+            <div class="tile-k">Active Scheme</div>
+            <div class="tile-v" id="wb-scheme">DARK</div>
+          </div>
+        </div>
+
+        <div class="wb-tbl-wrap" id="wb-wrap" data-density="compact" role="region" aria-labelledby="wb-tbl-cap" tabindex="0">
+          <table id="wb-table" class="dt">
+            <caption id="wb-tbl-cap">DENSE//DS live interactive workbench table</caption>
+            <thead>
+              <tr>
+                <th scope="col" data-type="string" aria-sort="ascending">
+                  <button type="button" class="th-b" commandfor="wb-table" command="--sort">
+                    <span>Module</span>
+                    <svg class="si si-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    <svg class="si si-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m5 15 7-7 7 7"/></svg>
+                  </button>
+                </th>
+                <th scope="col" data-type="string">
+                  <button type="button" class="th-b" commandfor="wb-table" command="--sort">
+                    <span>Status</span>
+                    <svg class="si si-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    <svg class="si si-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m5 15 7-7 7 7"/></svg>
+                  </button>
+                </th>
+                <th scope="col" class="r" data-type="number">
+                  <button type="button" class="th-b" commandfor="wb-table" command="--sort">
+                    <span>Size</span>
+                    <svg class="si si-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    <svg class="si si-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m5 15 7-7 7 7"/></svg>
+                  </button>
+                </th>
+                <th scope="col" class="r" data-type="number">
+                  <button type="button" class="th-b" commandfor="wb-table" command="--sort">
+                    <span>Density</span>
+                    <svg class="si si-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                    <svg class="si si-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m5 15 7-7 7 7"/></svg>
+                  </button>
+                </th>
+                <th scope="col" class="r">Action</th>
+              </tr>
+            </thead>
+            <tbody id="wb-tbody">
+              <tr data-status="ok" data-name="catalog.html" data-kind="Living Catalog · 05 sections" data-href="catalog.html" data-note="Full atomic tokens, forms, data primitives, tables, charts, and overlay gallery.">
+                <td data-label="Module" data-card="head"><span class="cv mono">catalog.html</span></td>
+                <td data-label="Status" data-card="badge"><span class="badge b-ok b-dot">OK</span></td>
+                <td data-label="Size" class="r m" data-value="179391">175.2 KB</td>
+                <td data-label="Density" class="r" data-value="94">
+                  <div class="meter-l">
+                    <div class="meter ok" style="--v:94%"><span></span></div>
+                    <span class="mono">94%</span>
+                  </div>
+                </td>
+                <td data-label="Action" class="c-act" data-card="act"><div class="cv"><button type="button" class="btn btn-xs" data-inspect>Inspect</button></div></td>
+              </tr>
+              <tr data-status="ok" data-name="demo-inventory.html" data-kind="Supply Matrix · 96 SKUs" data-href="demo-inventory.html" data-note="Editable reorder quantities, stock health meters, and warehouse allocation view.">
+                <td data-label="Module" data-card="head"><span class="cv mono">demo-inventory.html</span></td>
+                <td data-label="Status" data-card="badge"><span class="badge b-ok b-dot">OK</span></td>
+                <td data-label="Size" class="r m" data-value="128763">125.7 KB</td>
+                <td data-label="Density" class="r" data-value="92">
+                  <div class="meter-l">
+                    <div class="meter ok" style="--v:92%"><span></span></div>
+                    <span class="mono">92%</span>
+                  </div>
+                </td>
+                <td data-label="Action" class="c-act" data-card="act"><div class="cv"><button type="button" class="btn btn-xs" data-inspect>Inspect</button></div></td>
+              </tr>
+              <tr data-status="warn" data-name="demo-ledger.html" data-kind="Audit Ledger · 120 rows" data-href="demo-ledger.html" data-note="Double-entry journal lines, tabular signed deltas, and reconciliation drawers.">
+                <td data-label="Module" data-card="head"><span class="cv mono">demo-ledger.html</span></td>
+                <td data-label="Status" data-card="badge"><span class="badge b-wn b-dot">WARN</span></td>
+                <td data-label="Size" class="r m" data-value="143061">139.7 KB</td>
+                <td data-label="Density" class="r" data-value="88">
+                  <div class="meter-l">
+                    <div class="meter wn" style="--v:88%"><span></span></div>
+                    <span class="mono">88%</span>
+                  </div>
+                </td>
+                <td data-label="Action" class="c-act" data-card="act"><div class="cv"><button type="button" class="btn btn-xs" data-inspect>Inspect</button></div></td>
+              </tr>
+              <tr data-status="crit" data-name="demo-telemetry.html" data-kind="Fleet Ops · 80 nodes" data-href="demo-telemetry.html" data-note="Live CPU/mem telemetry, SVG sparklines, incident filter chips, and bulk actions.">
+                <td data-label="Module" data-card="head"><span class="cv mono">demo-telemetry.html</span></td>
+                <td data-label="Status" data-card="badge"><span class="badge b-er b-dot">CRIT</span></td>
+                <td data-label="Size" class="r m" data-value="134890">131.7 KB</td>
+                <td data-label="Density" class="r" data-value="97">
+                  <div class="meter-l">
+                    <div class="meter er" style="--v:97%"><span></span></div>
+                    <span class="mono">97%</span>
+                  </div>
+                </td>
+                <td data-label="Action" class="c-act" data-card="act"><div class="cv"><button type="button" class="btn btn-xs" data-inspect>Inspect</button></div></td>
+              </tr>
+              <tr data-status="ok" data-name="src/ds.css" data-kind="Core Stylesheet · 13 sections" data-href="src/ds.css" data-note="Tokens, reset, app shell, buttons, inputs, badges, data table, overlays, and charts.">
+                <td data-label="Module" data-card="head"><span class="cv mono">src/ds.css</span></td>
+                <td data-label="Status" data-card="badge"><span class="badge b-ok b-dot">OK</span></td>
+                <td data-label="Size" class="r m" data-value="51850">50.6 KB</td>
+                <td data-label="Density" class="r" data-value="96">
+                  <div class="meter-l">
+                    <div class="meter ok" style="--v:96%"><span></span></div>
+                    <span class="mono">96%</span>
+                  </div>
+                </td>
+                <td data-label="Action" class="c-act" data-card="act"><div class="cv"><button type="button" class="btn btn-xs" data-inspect>Inspect</button></div></td>
+              </tr>
+              <tr data-status="ok" data-name="src/ds.js + picker.js" data-kind="Core Runtime · ES6+ Vanilla" data-href="demo-picker.html" data-note="DataTable, Chart, CustomSelect, Combobox, toasts, theme toggle, and date/time pickers.">
+                <td data-label="Module" data-card="head"><span class="cv mono">src/ds.js + picker.js</span></td>
+                <td data-label="Status" data-card="badge"><span class="badge b-ok b-dot">OK</span></td>
+                <td data-label="Size" class="r m" data-value="77318">75.5 KB</td>
+                <td data-label="Density" class="r" data-value="91">
+                  <div class="meter-l">
+                    <div class="meter ok" style="--v:91%"><span></span></div>
+                    <span class="mono">91%</span>
+                  </div>
+                </td>
+                <td data-label="Action" class="c-act" data-card="act"><div class="cv"><button type="button" class="btn btn-xs" data-inspect>Inspect</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="wb-empty" id="wb-empty" hidden>No modules match the active status filter or search query.</div>
+        </div>
+        <div class="vh" id="wb-status" role="status"></div>
+      </section>
+    </section>
+
+    <section id="pillars" aria-labelledby="pillars-h">
+      <div class="sec-head">
+        <h2 id="pillars-h" class="sec-title">Core Architecture</h2>
+        <span class="sec-sub">4 PILLARS · ZERO BUILD</span>
+      </div>
+      <div class="grid-4">
+        <article class="panel pillar">
+          <div class="panel-h">
+            <span class="panel-t">01 · Vanilla Stack</span>
+            <div class="spacer"></div>
+            <span class="badge b-ok">NO NPM</span>
+          </div>
+          <div class="panel-b">
+            <p>Pure HTML5, CSS3, and ES6+ with zero frameworks, bundlers, or transpilers. Opens natively over <code>file://</code> and static HTTPS hosts.</p>
+          </div>
+        </article>
+        <article class="panel pillar">
+          <div class="panel-h">
+            <span class="panel-t">02 · light-dark() Tokens</span>
+            <div class="spacer"></div>
+            <span class="badge b-ac">CSS4</span>
+          </div>
+          <div class="panel-b">
+            <p>Single-declaration surface, border, and semantic color tokens bound to <code>meta[name="color-scheme"]</code> and persisted in <code>localStorage['ds-scheme']</code>.</p>
+          </div>
+        </article>
+        <article class="panel pillar">
+          <div class="panel-h">
+            <span class="panel-t">03 · Ultra-Condensed</span>
+            <div class="spacer"></div>
+            <span class="badge b-wn">26PX TH</span>
+          </div>
+          <div class="panel-b">
+            <p>Tight <code>36px</code> topbars, <code>22px–30px</code> table headers, <code>tabular-nums slashed-zero</code> alignment, and container-query mobile card transforms.</p>
+          </div>
+        </article>
+        <article class="panel pillar">
+          <div class="panel-h">
+            <span class="panel-t">04 · Native Primitives</span>
+            <div class="spacer"></div>
+            <span class="badge b-vi">TOP-LAYER</span>
+          </div>
+          <div class="panel-b">
+            <p>Built on <code>&lt;dialog&gt;</code> modals/drawers, Popover API menus and toasts, APG custom selects/comboboxes, and <code>/</code> search hotkeys.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="demos" aria-labelledby="demos-h">
+      <div class="sec-head">
+        <h2 id="demos-h" class="sec-title">Catalog &amp; Live Demos</h2>
+        <span class="sec-sub">5 PRODUCTION SURFACES</span>
+      </div>
+      <div class="grid-demos">
+        <a href="catalog.html" class="panel demo-card">
+          <div class="panel-h">
+            <span class="panel-t">Component Catalog</span>
+            <div class="spacer"></div>
+            <span class="badge b-ac">05 SECT</span>
+          </div>
+          <div class="panel-b">
+            <p>Interactive reference for tokens, controls, badges, meters, sparklines, tables, dialogs, and responsive preview.</p>
+            <div class="demo-meta">
+              <span>catalog.html</span>
+              <span class="demo-go">Open →</span>
+            </div>
+          </div>
+        </a>
+        <a href="demo-telemetry.html" class="panel demo-card">
+          <div class="panel-h">
+            <span class="panel-t">System Telemetry</span>
+            <div class="spacer"></div>
+            <span class="badge b-er">80 NODES</span>
+          </div>
+          <div class="panel-b">
+            <p>Fleet health matrix with multi-series SVG charts, live sparklines, incident filter chips, and bulk actions.</p>
+            <div class="demo-meta">
+              <span>demo-telemetry.html</span>
+              <span class="demo-go">Open →</span>
+            </div>
+          </div>
+        </a>
+        <a href="demo-ledger.html" class="panel demo-card">
+          <div class="panel-h">
+            <span class="panel-t">Financial Ledger</span>
+            <div class="spacer"></div>
+            <span class="badge b-wn">120 ROWS</span>
+          </div>
+          <div class="panel-b">
+            <p>Double-entry audit stream with signed tabular amounts, status reconciliation, and detail inspection drawers.</p>
+            <div class="demo-meta">
+              <span>demo-ledger.html</span>
+              <span class="demo-go">Open →</span>
+            </div>
+          </div>
+        </a>
+        <a href="demo-inventory.html" class="panel demo-card">
+          <div class="panel-h">
+            <span class="panel-t">Supply Inventory</span>
+            <div class="spacer"></div>
+            <span class="badge b-ok">96 SKUS</span>
+          </div>
+          <div class="panel-b">
+            <p>SKU reorder matrix with inline quantity steppers, threshold meters, dirty-row highlights, and CSV export.</p>
+            <div class="demo-meta">
+              <span>demo-inventory.html</span>
+              <span class="demo-go">Open →</span>
+            </div>
+          </div>
+        </a>
+        <a href="demo-picker.html" class="panel demo-card">
+          <div class="panel-h">
+            <span class="panel-t">Date / Time Pickers</span>
+            <div class="spacer"></div>
+            <span class="badge b-in">ESM</span>
+          </div>
+          <div class="panel-b">
+            <p>Popover-based replacement for native date, time, and datetime-local inputs dispatching standard input/change events.</p>
+            <div class="demo-meta">
+              <span>demo-picker.html</span>
+              <span class="demo-go">Open →</span>
+            </div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section id="quickstart" aria-labelledby="qs-h">
+      <div class="sec-head">
+        <h2 id="qs-h" class="sec-title">Quickstart</h2>
+        <span class="sec-sub">DROP-IN STATIC ASSETS</span>
+      </div>
+      <div class="panel">
+        <div class="panel-h">
+          <span class="panel-t">HTML5 BOILERPLATE</span>
+          <span class="badge b-mu">src/ds.css</span>
+          <span class="badge b-mu">src/ds.js</span>
+          <span class="badge b-mu hide-sm">src/picker.css + src/picker.js</span>
+          <div class="spacer"></div>
+          <span class="copy">
+            <button type="button" class="btn btn-sm copy-btn" command="--copy" commandfor="qs-snippet" aria-label="Copy quickstart HTML snippet">
+              <svg class="lucide i12 ic-cp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              <svg class="lucide i12 ic-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <span>Copy</span>
+            </button>
+            <span class="copy-tip" role="status"></span>
+          </span>
+        </div>
+        <pre class="code qs-code" tabindex="0"><code id="qs-snippet">&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+  &lt;meta name="color-scheme" content="dark"&gt;
+  &lt;script&gt;try{document.querySelector('meta[name="color-scheme"]').content=localStorage.getItem('ds-scheme')||'dark';}catch(e){}&lt;/script&gt;
+  &lt;link rel="stylesheet" href="src/ds.css"&gt;
+  &lt;link rel="stylesheet" href="src/picker.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;!-- Use .app, .topbar, .panel, .kpis, .dt, &lt;dialog&gt;, and data-action="theme" --&gt;
+  &lt;script src="src/ds.js"&gt;&lt;/script&gt;
+  &lt;script type="module"&gt;
+    import { initPickers } from './src/picker.js';
+    initPickers();
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="mono">DENSE//DS · <a class="link" href="https://dense.vberkoz.com">dense.vberkoz.com</a></div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="catalog.html">Catalog</a>
+        <a href="demo-telemetry.html">Telemetry</a>
+        <a href="demo-ledger.html">Ledger</a>
+        <a href="demo-inventory.html">Inventory</a>
+        <a href="demo-picker.html">Pickers</a>
+        <a href="https://github.com/vberkoz/dense" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+
+  <dialog id="wb-dialog" class="modal modal-sm" closedby="any" aria-labelledby="wb-dlg-title">
+    <div class="dlg-h">
+      <span class="dlg-t mono" id="wb-dlg-title">Module Details</span>
+      <div class="spacer"></div>
+      <button type="button" class="btn btn-ghost btn-xs btn-ic" data-close aria-label="Close dialog">
+        <svg class="lucide i12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="dlg-b">
+      <dl class="kv" id="wb-dlg-kv"></dl>
+    </div>
+    <div class="dlg-f">
+      <button type="button" class="btn btn-sm" data-close>Close</button>
+      <a href="catalog.html" class="btn btn-pri btn-sm" id="wb-dlg-open">Open Surface</a>
+    </div>
+  </dialog>
+
+  <script src="src/ds.js"></script>
+  <script>
+    (() => {
+      const header = document.getElementById('site-header');
+      const inner = document.getElementById('header-inner');
+      const menu = document.getElementById('site-menu');
+      const menuBtn = header ? header.querySelector('.menu-btn') : null;
+      let lastWidth = 0;
+
+      const isPopoverOpen = (el) => { try { return el.matches(':popover-open'); } catch (e) { return false; } };
+
+      const syncNav = () => {
+        if (!header || !inner || !menu || !menuBtn) return;
+        const wasOpen = isPopoverOpen(menu);
+        const wasWide = header.classList.contains('is-wide');
+        const currentW = inner.clientWidth;
+        if (!wasWide && currentW > 0 && currentW <= lastWidth) return;
+        lastWidth = currentW;
+
+        header.classList.add('is-measuring', 'is-wide');
+        menu.removeAttribute('popover');
+        const wide = inner.scrollWidth <= inner.clientWidth;
+        header.classList.toggle('is-wide', wide);
+
+        if (!wide) {
+          menu.setAttribute('popover', 'auto');
+          if (wasOpen) {
+            try { menu.showPopover(); } catch (e) { /* noop */ }
+          }
+          menuBtn.setAttribute('aria-expanded', String(isPopoverOpen(menu)));
+        } else {
+          menuBtn.setAttribute('aria-expanded', 'false');
+        }
+        requestAnimationFrame(() => header.classList.remove('is-measuring'));
+      };
+
+      if (menu && menuBtn) {
+        menu.addEventListener('toggle', (e) => {
+          if (!header.classList.contains('is-wide')) {
+            menuBtn.setAttribute('aria-expanded', String(e.newState === 'open'));
+          }
+        });
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => syncNav());
+          ro.observe(inner);
+          ro.observe(menu);
+        } else {
+          window.addEventListener('resize', syncNav);
+        }
+        syncNav();
+      }
+
+      /* Live Workbench: density, status filter, search, native DOM sort, modal inspect */
+      const wbWrap = document.getElementById('wb-wrap');
+      const wbTable = document.getElementById('wb-table');
+      const wbTbody = document.getElementById('wb-tbody');
+      const wbEmpty = document.getElementById('wb-empty');
+      const wbStatus = document.getElementById('wb-status');
+      const wbVisible = document.getElementById('wb-visible');
+      const wbHeaderH = document.getElementById('wb-header-h');
+      const wbScheme = document.getElementById('wb-scheme');
+      const wbSearch = document.getElementById('wb-search');
+      const densityH = { ultra: '22px', compact: '26px', standard: '30px' };
+      const state = { status: 'all', q: '' };
+
+      const syncScheme = () => {
+        if (wbScheme && window.DS) wbScheme.textContent = DS.theme.get().toUpperCase();
+      };
+      syncScheme();
+      document.addEventListener('ds:theme', syncScheme);
+
+      const applyFilters = () => {
+        if (!wbTbody) return;
+        const rows = [...wbTbody.rows];
+        let shown = 0;
+        for (const r of rows) {
+          const okStatus = state.status === 'all' || r.dataset.status === state.status;
+          const hay = (r.dataset.name + ' ' + r.dataset.kind + ' ' + r.dataset.status).toLowerCase();
+          const okQuery = !state.q || hay.includes(state.q);
+          const vis = okStatus && okQuery;
+          r.hidden = !vis;
+          if (vis) shown++;
+        }
+        if (wbEmpty) wbEmpty.hidden = shown > 0;
+        if (wbVisible) wbVisible.textContent = `${shown} / ${rows.length}`;
+        if (wbStatus) wbStatus.textContent = `${shown} of ${rows.length} modules visible`;
+      };
+
+      document.getElementById('wb-density-seg')?.addEventListener('seg', (e) => {
+        const d = e.detail;
+        if (wbWrap) wbWrap.setAttribute('data-density', d);
+        if (wbHeaderH) wbHeaderH.textContent = densityH[d] || '26px';
+      });
+
+      document.getElementById('wb-filter-seg')?.addEventListener('seg', (e) => {
+        state.status = e.detail;
+        applyFilters();
+      });
+
+      wbSearch?.addEventListener('input', () => {
+        state.q = wbSearch.value.trim().toLowerCase();
+        applyFilters();
+      });
+
+      const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+      const sortTableBy = (th) => {
+        if (!wbTable || !wbTbody || !th) return;
+        const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+        for (const h of wbTable.tHead.rows[0].cells) h.removeAttribute('aria-sort');
+        th.setAttribute('aria-sort', dir);
+
+        const idx = th.cellIndex;
+        const type = th.dataset.type || 'string';
+        const factor = dir === 'ascending' ? 1 : -1;
+        const val = (r) => r.cells[idx].dataset.value ?? r.cells[idx].textContent.trim();
+        const ordered = [...wbTbody.rows].sort((a, b) => (
+          factor * (type === 'number' ? Number(val(a)) - Number(val(b)) : collator.compare(val(a), val(b)))
+        ));
+        for (const row of ordered) {
+          if (typeof wbTbody.moveBefore === 'function') wbTbody.moveBefore(row, null);
+          else wbTbody.appendChild(row);
+        }
+        if (wbStatus) wbStatus.textContent = `Sorted by ${th.textContent.trim()}, ${dir}, ${ordered.length} rows`;
+      };
+
+      if (wbTable) {
+        wbTable.addEventListener('command', (e) => {
+          if (e.command !== '--sort') return;
+          sortTableBy(e.source?.closest('th'));
+        });
+        if (!('CommandEvent' in window)) {
+          wbTable.tHead?.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[command="--sort"]');
+            if (btn) sortTableBy(btn.closest('th'));
+          });
+        }
+      }
+
+      /* Inspect modal dialog */
+      const dlgTitle = document.getElementById('wb-dlg-title');
+      const dlgKv = document.getElementById('wb-dlg-kv');
+      const dlgOpen = document.getElementById('wb-dlg-open');
+      const populateDialog = (row) => {
+        if (!row || !dlgKv || !dlgTitle || !dlgOpen) return;
+        const name = row.dataset.name || '';
+        const sizeCell = row.cells[2]?.textContent.trim() || '';
+        const densityCell = row.cells[3]?.textContent.trim() || '';
+        dlgTitle.textContent = name;
+        dlgOpen.setAttribute('href', row.dataset.href || 'catalog.html');
+        dlgKv.innerHTML = '';
+        const pairs = [
+          ['Surface', row.dataset.kind || ''],
+          ['Status', (row.dataset.status || '').toUpperCase()],
+          ['Footprint', sizeCell],
+          ['Density', densityCell],
+          ['Notes', row.dataset.note || '']
+        ];
+        for (const [k, v] of pairs) {
+          const dt = document.createElement('dt');
+          dt.textContent = k;
+          const dd = document.createElement('dd');
+          dd.textContent = v;
+          dd.title = v;
+          dlgKv.append(dt, dd);
+        }
+      };
+
+      wbTbody?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-inspect]');
+        if (!btn) return;
+        populateDialog(btn.closest('tr'));
+        if (window.DS) DS.openDialog('wb-dialog');
+      });
+
+      document.getElementById('wb-inspect-active')?.addEventListener('click', () => {
+        const firstVisible = [...(wbTbody?.rows || [])].find((r) => !r.hidden) || wbTbody?.rows[0];
+        populateDialog(firstVisible);
+      });
+
+      /* Quickstart copy button (Invoker Commands + click fallback + clipboard/execCommand fallback) */
+      const copyTimers = new WeakMap();
+      let lastCopyMsg = '';
+      const legacyCopy = (text) => {
+        const field = Object.assign(document.createElement('textarea'), { value: text });
+        field.setAttribute('readonly', '');
+        field.style.cssText = 'position:fixed;inset-block-start:0;opacity:0';
+        document.body.append(field);
+        field.select();
+        try { return document.execCommand('copy'); } finally { field.remove(); }
+      };
+      const reportCopy = (button, ok) => {
+        const tip = button.nextElementSibling;
+        clearTimeout(copyTimers.get(button));
+        button.removeAttribute('data-copied');
+        button.removeAttribute('data-failed');
+        let message = ok ? 'Copied' : 'Copy failed';
+        if (message === lastCopyMsg) message += '\u00A0';
+        lastCopyMsg = message;
+        if (tip) tip.textContent = '';
+        void button.offsetWidth;
+        button.setAttribute(ok ? 'data-copied' : 'data-failed', '');
+        if (tip) requestAnimationFrame(() => { tip.textContent = message; });
+        copyTimers.set(button, setTimeout(() => {
+          button.removeAttribute('data-copied');
+          button.removeAttribute('data-failed');
+          if (tip) tip.textContent = '';
+        }, 2000));
+      };
+      const handleCopy = async (button, target) => {
+        if (!button || !target) return;
+        const text = target.matches('input, textarea') ? target.value : target.innerText.trim();
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          reportCopy(button, true);
+        } catch {
+          reportCopy(button, legacyCopy(text));
+        }
+      };
+
+      if ('CommandEvent' in window) {
+        document.addEventListener('command', (e) => {
+          if (e.command === '--copy') handleCopy(e.source, e.target);
+        }, true);
+      } else {
+        document.addEventListener('click', (e) => {
+          const btn = e.target.closest('button[command="--copy"]');
+          if (!btn) return;
+          const target = document.getElementById(btn.getAttribute('commandfor'));
+          if (target) handleCopy(btn, target);
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
