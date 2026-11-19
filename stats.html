@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<script>try{document.querySelector('meta[name="color-scheme"]').content=localStorage.getItem('ds-scheme')||'dark';}catch(e){}</script>
+<title>DENSE//DS — Live Traffic Telemetry</title>
+<meta name="description" content="Zero-PII serverless traffic telemetry dashboard for DENSE//DS powered by AWS Lambda, DynamoDB, API Gateway, and CloudFront.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/ds.css">
+<style>
+  html, body { height: auto; min-height: 100%; overflow: visible; }
+  body { overflow-x: clip; }
+
+  .wrap { width: 100%; max-width: 1240px; margin-inline: auto; padding-inline: 12px; }
+  .site-main { display: flex; flex-direction: column; gap: 12px; padding-block: 12px 24px; }
+
+  /* Sticky responsive header */
+  .site-header {
+    position: sticky; top: 0; z-index: 40;
+    block-size: var(--h-bar); background: var(--bg-1); border-bottom: 1px solid var(--ln);
+  }
+  .site-header.is-measuring * { transition: none !important; }
+  .header-inner {
+    display: flex; align-items: center; gap: 8px;
+    block-size: 100%; max-width: 1240px; margin-inline: auto; padding-inline: 12px;
+  }
+  .header-inner > * { flex-shrink: 0; white-space: nowrap; }
+  .header-inner > .spacer { flex: 1 1 auto; min-width: 0; }
+
+  .brand { display: inline-flex; align-items: center; gap: 8px; padding: 2px 4px 2px 0; border-radius: var(--r); }
+  .brand-t { font: 700 14px/1 var(--f-cond); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-0); }
+  .brand-t span { color: var(--fg-2); font-weight: 500; }
+  .btn-ic .lucide { vertical-align: middle; }
+  .btn-ic .when-dark, .btn-ic .when-light { line-height: 0; }
+
+  .site-nav { display: flex; align-items: center; gap: 4px; }
+  .menu-btn { anchor-name: --menu-btn; min-height: 24px; }
+  .site-menu {
+    position: fixed; inset: auto;
+    inset-block-start: calc(var(--h-bar) + 6px);
+    inset-block-start: anchor(--menu-btn bottom);
+    inset-inline-end: 12px;
+    inline-size: min(80dvw, 18rem);
+    max-inline-size: calc(100dvw - 24px);
+    block-size: fit-content;
+    max-block-size: calc(100dvh - 5rem);
+    margin: 4px 0 0; padding: 4px; overflow: auto;
+    background: var(--bg-2); color: var(--fg-0);
+    border: 1px solid var(--ln-2); border-radius: var(--r-2); box-shadow: var(--sh);
+  }
+  .site-menu a {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-block-size: 26px; padding: 4px 8px; border-radius: var(--r);
+    font: 500 12px/1 var(--f-ui); color: var(--fg-1);
+  }
+  .site-menu a:hover { background: var(--bg-3); color: var(--fg-0); }
+  .site-menu a[aria-current="page"] { background: var(--ac-bg); color: var(--ac); }
+
+  .site-header.is-wide .menu-btn { display: none; }
+  .site-header.is-wide .site-menu {
+    position: static; display: flex; align-items: center; gap: 2px;
+    inline-size: auto; max-inline-size: none; block-size: auto; max-block-size: none;
+    overflow: visible; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none;
+  }
+  .site-header.is-wide .site-menu::backdrop { display: none; }
+  .site-header.is-wide .site-menu a { min-block-size: 24px; padding: 0 7px; font-size: 11.5px; }
+
+  /* Toolbar */
+  .stats-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 8px 10px; background: var(--bg-1); border: 1px solid var(--ln); border-radius: var(--r);
+  }
+  .stats-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .stats-title h1 { font: 700 15px/1 var(--f-cond); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-0); }
+  .stats-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-inline-start: auto; }
+
+  /* Error banner */
+  .err-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 10px; background: var(--er-bg); color: var(--er);
+    border: 1px solid color-mix(in srgb, var(--er) 40%, transparent); border-radius: var(--r);
+    font: 500 11.5px/1.3 var(--f-mono);
+  }
+
+  /* KPI Strip */
+  .kpi-panel { overflow: hidden; }
+  .kpi-panel .kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+  /* Daily Chart */
+  .chart-panel { overflow: hidden; }
+  .chart-head-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-inline-start: auto; min-width: 0; }
+  .chart-readout { font: 500 10.5px/1 var(--f-mono); color: var(--fg-1); white-space: nowrap; }
+  .traffic-svg-wrap { padding: 8px; background: var(--bg-1); }
+  .traffic-svg { display: block; width: 100%; height: auto; overflow: visible; user-select: none; }
+  .traffic-svg .ax-grid { stroke: var(--ln); stroke-width: 1; }
+  .traffic-svg .ax-lbl { fill: var(--fg-2); font: 400 10px/1 var(--f-mono); }
+  .traffic-svg .bar-v { fill: var(--ac); opacity: .72; transition: opacity .1s; }
+  .traffic-svg .bar-v.is-hot { opacity: 1; }
+  .traffic-svg .ln-u { fill: none; stroke: var(--ok); stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+  .traffic-svg .pt-u { fill: var(--bg-1); stroke: var(--ok); stroke-width: 1.5; }
+  .traffic-svg .xh-line { stroke: var(--fg-2); stroke-width: 1; stroke-dasharray: 2 2; opacity: 0; pointer-events: none; }
+  .traffic-svg .xh-line.is-on { opacity: .8; }
+  .traffic-svg .hit-col { fill: transparent; cursor: crosshair; outline: none; }
+  .traffic-svg .hit-col:focus-visible { fill: color-mix(in srgb, var(--ac) 12%, transparent); }
+
+  /* Breakdown grid */
+  .breakdown-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .bd-panel { overflow: hidden; }
+  .bd-panel .tbl-wrap { max-block-size: 270px; }
+  .bd-panel .dt th, .bd-panel .dt td { padding: 4px 8px; }
+  .share-cell { width: 112px; }
+  .share-cell .meter-l > .mono { width: 34px; color: var(--fg-2); }
+
+  .env-box {
+    display: flex; flex-direction: column; gap: 8px; padding: 8px;
+    border-top: 1px solid var(--ln); background: var(--bg-1);
+  }
+  .env-group { display: flex; flex-direction: column; gap: 4px; }
+  .env-row {
+    display: grid; grid-template-columns: 64px minmax(0, 1fr) 68px; align-items: center; gap: 6px;
+    font-size: 11px;
+  }
+  .env-lbl { color: var(--fg-1); white-space: nowrap; }
+  .env-val { text-align: right; color: var(--fg-2); font-size: 10.5px; }
+
+  /* Recent Hits */
+  .recent-panel { overflow: hidden; }
+  .recent-panel .tbl-wrap { max-block-size: 360px; }
+  .recent-panel .dt { min-inline-size: 620px; }
+
+  /* Footer */
+  .site-footer {
+    border-top: 1px solid var(--ln); background: var(--bg-1);
+    padding-block: 10px; font-size: 11px; color: var(--fg-2);
+  }
+  .footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+  .footer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .footer-links a:hover { color: var(--fg-0); text-decoration: underline; text-underline-offset: 2px; }
+
+  @media (max-width: 1020px) {
+    .kpi-panel .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .breakdown-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    .kpi-panel .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .breakdown-grid { grid-template-columns: minmax(0, 1fr); }
+    .stats-actions { margin-inline-start: 0; }
+  }
+  @media (forced-colors: active) {
+    .site-menu a[aria-current="page"] { outline: 2px solid Highlight; }
+  }
+</style>
+</head>
+<body>
+  <header class="site-header" id="site-header">
+    <div class="header-inner" id="header-inner">
+      <a href="index.html" class="brand">
+        <span class="rail-logo" aria-hidden="true">DS</span>
+        <span class="brand-t">DENSE<span>//DS</span></span>
+      </a>
+      <div class="spacer"></div>
+      <nav class="site-nav" aria-label="Primary">
+        <button type="button" class="btn btn-ghost btn-sm menu-btn" popovertarget="site-menu" popovertargetaction="toggle" aria-controls="site-menu" aria-expanded="false">
+          <svg class="lucide i14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+          <span>Menu</span>
+        </button>
+        <ul id="site-menu" class="site-menu" popover="auto">
+          <li><a href="catalog.html">Catalog</a></li>
+          <li><a href="demo-telemetry.html">Telemetry</a></li>
+          <li><a href="demo-ledger.html">Ledger</a></li>
+          <li><a href="demo-inventory.html">Inventory</a></li>
+          <li><a href="demo-picker.html">Pickers</a></li>
+          <li><a href="stats.html" aria-current="page">Stats</a></li>
+          <li><a href="https://github.com/vberkoz/dense" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        </ul>
+      </nav>
+      <button type="button" class="btn btn-ghost btn-ic" data-action="theme">
+        <span class="when-dark">
+          <svg class="lucide i14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          <span class="vh">Switch to light theme</span>
+        </span>
+        <span class="when-light">
+          <svg class="lucide i14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          <span class="vh">Switch to dark theme</span>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap site-main">
+    <section class="stats-bar" aria-label="Telemetry Controls">
+      <div class="stats-title">
+        <h1>Traffic Telemetry</h1>
+        <span class="badge b-mu" id="stats-status-badge" aria-live="polite">
+          <span class="dot ac pulse" id="stats-dot" aria-hidden="true"></span>
+          <span id="stats-status">LOADING</span>
+        </span>
+        <span class="t-meta mono hide-sm" id="stats-window">ZERO-PII // DYNAMODB</span>
+      </div>
+      <div class="stats-actions">
+        <div class="btn-grp" role="group" aria-label="Date range">
+          <button type="button" class="btn btn-sm" data-days="1" aria-pressed="false">24h</button>
+          <button type="button" class="btn btn-sm" data-days="7" aria-pressed="false">7d</button>
+          <button type="button" class="btn btn-sm" data-days="14" aria-pressed="true">14d</button>
+          <button type="button" class="btn btn-sm" data-days="30" aria-pressed="false">30d</button>
+          <button type="button" class="btn btn-sm" data-days="90" aria-pressed="false">90d</button>
+        </div>
+        <button type="button" class="btn btn-sm" id="btn-refresh">
+          <svg class="lucide i12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+          <span>Refresh</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-tog" id="btn-auto" aria-pressed="false">
+          <span class="dot mu" id="auto-dot" aria-hidden="true"></span>
+          <span>Auto 30s</span>
+        </button>
+      </div>
+    </section>
+
+    <div class="err-banner" id="stats-error" role="alert" hidden>
+      <span id="stats-error-msg">Unable to reach telemetry API.</span>
+      <button type="button" class="btn btn-xs" id="btn-retry">Retry</button>
+    </div>
+
+    <section class="panel kpi-panel" aria-label="Key Traffic Indicators">
+      <div class="kpis">
+        <div class="tile">
+          <div class="tile-k">Total Views</div>
+          <div class="tile-v" id="kpi-views">—</div>
+          <div class="tile-f"><span class="t-meta mono" id="kpi-views-sub">window sum</span></div>
+        </div>
+        <div class="tile">
+          <div class="tile-k">Unique Visitors</div>
+          <div class="tile-v" id="kpi-uniques">—</div>
+          <div class="tile-f"><span class="t-meta mono">daily sha256 dedup</span></div>
+        </div>
+        <div class="tile">
+          <div class="tile-k">Views / Visitor</div>
+          <div class="tile-v" id="kpi-ratio">—</div>
+          <div class="tile-f"><span class="t-meta mono">engagement ratio</span></div>
+        </div>
+        <div class="tile">
+          <div class="tile-k">Top Surface</div>
+          <div class="tile-v" id="kpi-top-path">—</div>
+          <div class="tile-f"><span class="t-meta mono" id="kpi-top-path-sub">leading route</span></div>
+        </div>
+        <div class="tile">
+          <div class="tile-k">Dark Scheme</div>
+          <div class="tile-v" id="kpi-dark">—</div>
+          <div class="tile-f"><span class="t-meta mono" id="kpi-dark-sub">vs light</span></div>
+        </div>
+        <div class="tile">
+          <div class="tile-k">Device Split</div>
+          <div class="tile-v" id="kpi-dev">—</div>
+          <div class="tile-f"><span class="t-meta mono" id="kpi-dev-sub">desk / mob / tab</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel chart-panel" aria-labelledby="lbl-chart">
+      <div class="panel-h">
+        <span class="panel-t" id="lbl-chart">Daily Traffic</span>
+        <div class="chart-head-meta">
+          <span class="legend">
+            <span style="--c:var(--ac)">Views</span>
+            <span style="--c:var(--ok)">Unique Visitors</span>
+          </span>
+          <span class="chart-readout" id="chart-readout" aria-live="polite">Hover a day to inspect</span>
+        </div>
+      </div>
+      <div class="traffic-svg-wrap">
+        <svg id="traffic-svg" class="traffic-svg" viewBox="0 0 920 220" role="img" aria-label="Daily views bars and unique visitors line chart"></svg>
+      </div>
+    </section>
+
+    <section class="breakdown-grid" aria-label="Traffic Breakdown">
+      <article class="panel bd-panel" aria-labelledby="lbl-pages">
+        <div class="panel-h">
+          <span class="panel-t" id="lbl-pages">Top Surfaces</span>
+          <div class="spacer"></div>
+          <span class="t-meta mono" id="cnt-pages">0</span>
+        </div>
+        <div class="tbl-wrap" tabindex="0" role="region" aria-labelledby="lbl-pages" data-density="compact">
+          <table class="dt fixed">
+            <caption>Top visited surfaces</caption>
+            <thead>
+              <tr>
+                <th>Surface</th>
+                <th class="r" style="width:62px">Views</th>
+                <th class="r share-cell">Share</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-pages"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel bd-panel" aria-labelledby="lbl-refs">
+        <div class="panel-h">
+          <span class="panel-t" id="lbl-refs">Top Referrers</span>
+          <div class="spacer"></div>
+          <span class="t-meta mono" id="cnt-refs">0</span>
+        </div>
+        <div class="tbl-wrap" tabindex="0" role="region" aria-labelledby="lbl-refs" data-density="compact">
+          <table class="dt fixed">
+            <caption>Top referrer hosts</caption>
+            <thead>
+              <tr>
+                <th>Host</th>
+                <th class="r" style="width:62px">Views</th>
+                <th class="r share-cell">Share</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-refs"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel bd-panel" aria-labelledby="lbl-env">
+        <div class="panel-h">
+          <span class="panel-t" id="lbl-env">Countries &amp; Environment</span>
+          <div class="spacer"></div>
+          <span class="t-meta mono" id="cnt-countries">0</span>
+        </div>
+        <div class="tbl-wrap" tabindex="0" role="region" aria-label="Countries breakdown" data-density="compact" style="max-block-size:150px">
+          <table class="dt fixed">
+            <caption>Visitor countries</caption>
+            <thead>
+              <tr>
+                <th>Country</th>
+                <th class="r" style="width:62px">Views</th>
+                <th class="r share-cell">Share</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-countries"></tbody>
+          </table>
+        </div>
+        <div class="env-box">
+          <div class="env-group" id="env-devices">
+            <div class="t-label">Device Split</div>
+          </div>
+          <div class="env-group" id="env-schemes">
+            <div class="t-label">Color Scheme</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel recent-panel" aria-labelledby="lbl-recent">
+      <div class="panel-h">
+        <span class="panel-t" id="lbl-recent">Recent Hits</span>
+        <span class="badge b-mu" id="recent-count">0</span>
+        <div class="spacer"></div>
+        <input type="search" id="recent-filter" class="inp inp-sm mono" placeholder="Filter hits…" aria-label="Filter recent hits" style="width:180px">
+      </div>
+      <div class="tbl-wrap" tabindex="0" role="region" aria-labelledby="lbl-recent" data-density="compact">
+        <table class="dt">
+          <caption>Latest 25 collected page views</caption>
+          <thead>
+            <tr>
+              <th>UTC Time</th>
+              <th>Path</th>
+              <th>Referrer</th>
+              <th>Country</th>
+              <th>Device</th>
+              <th>Scheme</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-recent"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="mono">DENSE//DS · <a class="link" href="https://dense.vberkoz.com">dense.vberkoz.com</a></div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="catalog.html">Catalog</a>
+        <a href="demo-telemetry.html">Telemetry</a>
+        <a href="demo-ledger.html">Ledger</a>
+        <a href="demo-inventory.html">Inventory</a>
+        <a href="demo-picker.html">Pickers</a>
+        <a href="stats.html" aria-current="page">Stats</a>
+        <a href="https://github.com/vberkoz/dense" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="src/ds.js"></script>
+  <script>
+    (() => {
+      /* Responsive header popover nav */
+      const header = document.getElementById('site-header');
+      const inner = document.getElementById('header-inner');
+      const menu = document.getElementById('site-menu');
+      const menuBtn = header ? header.querySelector('.menu-btn') : null;
+      let lastWidth = 0;
+
+      const isPopoverOpen = (el) => { try { return el.matches(':popover-open'); } catch (e) { return false; } };
+
+      const syncNav = () => {
+        if (!header || !inner || !menu || !menuBtn) return;
+        const wasOpen = isPopoverOpen(menu);
+        const wasWide = header.classList.contains('is-wide');
+        const currentW = inner.clientWidth;
+        if (!wasWide && currentW > 0 && currentW <= lastWidth) return;
+        lastWidth = currentW;
+
+        header.classList.add('is-measuring', 'is-wide');
+        menu.removeAttribute('popover');
+        const wide = inner.scrollWidth <= inner.clientWidth;
+        header.classList.toggle('is-wide', wide);
+
+        if (!wide) {
+          menu.setAttribute('popover', 'auto');
+          if (wasOpen) {
+            try { menu.showPopover(); } catch (e) {}
+          }
+          menuBtn.setAttribute('aria-expanded', String(isPopoverOpen(menu)));
+        } else {
+          menuBtn.setAttribute('aria-expanded', 'false');
+        }
+        requestAnimationFrame(() => header.classList.remove('is-measuring'));
+      };
+
+      if (menu && menuBtn) {
+        menu.addEventListener('toggle', (e) => {
+          if (!header.classList.contains('is-wide')) {
+            menuBtn.setAttribute('aria-expanded', String(e.newState === 'open'));
+          }
+        });
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => syncNav());
+          ro.observe(inner);
+          ro.observe(menu);
+        } else {
+          window.addEventListener('resize', syncNav);
+        }
+        syncNav();
+      }
+
+      /* Dashboard state & helpers */
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      const REMOTE_BASE = 'https://dense.vberkoz.com';
+      const state = { days: 14, auto: false, timer: null, data: null };
+
+      const $id = (id) => document.getElementById(id);
+      const nf = new Intl.NumberFormat('en-US');
+      const fmtInt = (n) => nf.format(Math.round(Number(n) || 0));
+      const fmtPct = (num, den) => den > 0 ? ((num / den) * 100).toFixed(1) + '%' : '0.0%';
+
+      const el = (tag, cls, text) => {
+        const node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text !== undefined && text !== null) node.textContent = String(text);
+        return node;
+      };
+
+      const svgEl = (tag, attrs) => {
+        const node = document.createElementNS(SVG_NS, tag);
+        if (attrs) {
+          for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+        }
+        return node;
+      };
+
+      const setStatus = (mode, text) => {
+        const dot = $id('stats-dot');
+        const label = $id('stats-status');
+        const badge = $id('stats-status-badge');
+        if (label) label.textContent = text;
+        if (dot) {
+          dot.className = 'dot ' + (mode === 'ok' ? 'ok pulse' : mode === 'er' ? 'er' : 'ac pulse');
+        }
+        if (badge) {
+          badge.className = 'badge ' + (mode === 'ok' ? 'b-ok' : mode === 'er' ? 'b-er' : 'b-ac');
+        }
+      };
+
+      const isLocalOrigin = () => {
+        const h = (location.hostname || '').toLowerCase();
+        return location.protocol === 'file:' || h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+      };
+
+      const fetchStatsJson = async (url) => {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const ct = res.headers.get('content-type') || '';
+        if (!ct.includes('json')) throw new Error('Invalid response content-type');
+        return res.json();
+      };
+
+      const renderEmptyRow = (tbody, cols, msg) => {
+        tbody.replaceChildren();
+        const tr = el('tr', 'empty-row');
+        const td = el('td', '', msg);
+        td.colSpan = cols;
+        tr.append(td);
+        tbody.append(tr);
+      };
+
+      const renderBreakdown = (tbodyId, countId, rows, labelKey, totalViews) => {
+        const tbody = $id(tbodyId);
+        const cnt = $id(countId);
+        if (!tbody) return;
+        const list = Array.isArray(rows) ? rows : [];
+        if (cnt) cnt.textContent = fmtInt(list.length);
+        if (!list.length) {
+          renderEmptyRow(tbody, 3, 'No data recorded in range');
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        const maxV = Math.max(1, ...list.map((r) => Number(r.views) || 0));
+        for (const row of list) {
+          const v = Number(row.views) || 0;
+          const pct = totalViews > 0 ? (v / totalViews) * 100 : 0;
+          const barPct = Math.max(2, (v / maxV) * 100);
+          const tr = document.createElement('tr');
+
+          const tdLbl = el('td');
+          const lblSpan = el('div', 'cv mono', row[labelKey] || '—');
+          lblSpan.title = row[labelKey] || '';
+          tdLbl.append(lblSpan);
+
+          const tdVal = el('td', 'r m', fmtInt(v));
+
+          const tdShare = el('td', 'r share-cell');
+          const meterWrap = el('div', 'meter-l');
+          const meter = el('div', 'meter');
+          meter.style.setProperty('--v', barPct.toFixed(1) + '%');
+          meter.append(document.createElement('span'));
+          const pctTxt = el('span', 'mono', pct.toFixed(0) + '%');
+          meterWrap.append(meter, pctTxt);
+          tdShare.append(meterWrap);
+
+          tr.append(tdLbl, tdVal, tdShare);
+          frag.append(tr);
+        }
+        tbody.replaceChildren(frag);
+      };
+
+      const renderEnvBars = (containerId, title, items, total) => {
+        const box = $id(containerId);
+        if (!box) return;
+        box.replaceChildren(el('div', 't-label', title));
+        for (const item of items) {
+          const pct = total > 0 ? (item.value / total) * 100 : 0;
+          const row = el('div', 'env-row');
+          row.append(el('span', 'env-lbl', item.label));
+
+          const meter = el('div', 'meter' + (item.tone ? ' ' + item.tone : ''));
+          meter.style.setProperty('--v', pct.toFixed(1) + '%');
+          if (item.color) meter.style.setProperty('--c', item.color);
+          meter.append(document.createElement('span'));
+
+          const val = el('span', 'env-val mono', fmtInt(item.value) + ' · ' + pct.toFixed(0) + '%');
+          row.append(meter, val);
+          box.append(row);
+        }
+      };
+
+      const renderChart = (daily, totals) => {
+        const svg = $id('traffic-svg');
+        const readout = $id('chart-readout');
+        if (!svg) return;
+        const series = Array.isArray(daily) ? daily : [];
+        const defaultSummary = series.length
+          ? `${series[0].date} → ${series[series.length - 1].date} · ${fmtInt(totals.views)} views · ${fmtInt(totals.uniques)} uniques`
+          : 'No series data';
+        if (readout) readout.textContent = defaultSummary;
+
+        const W = 920, H = 220;
+        const pad = { t: 14, r: 12, b: 28, l: 42 };
+        const plotW = W - pad.l - pad.r;
+        const plotH = H - pad.t - pad.b;
+
+        const maxRaw = Math.max(4, ...series.map((d) => Math.max(Number(d.views) || 0, Number(d.uniques) || 0)));
+        const step = Math.pow(10, Math.floor(Math.log10(maxRaw)));
+        const niceUnits = [1, 2, 2.5, 5, 10];
+        const rawUnit = maxRaw / 4;
+        const unit = niceUnits.find((m) => m * (step / 10 || 1) >= rawUnit) * (step / 10 || 1) || Math.ceil(maxRaw / 4);
+        const yMax = Math.max(4, unit * 4);
+
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i <= 4; i++) {
+          const val = Math.round((yMax / 4) * i);
+          const y = pad.t + plotH - (plotH * i) / 4;
+          frag.append(svgEl('line', { x1: pad.l, y1: y.toFixed(1), x2: W - pad.r, y2: y.toFixed(1), class: 'ax-grid' }));
+          const lbl = svgEl('text', { x: pad.l - 6, y: (y + 3).toFixed(1), 'text-anchor': 'end', class: 'ax-lbl' });
+          lbl.textContent = fmtInt(val);
+          frag.append(lbl);
+        }
+
+        if (!series.length) {
+          svg.replaceChildren(frag);
+          return;
+        }
+
+        const n = series.length;
+        const slotW = plotW / n;
+        const barW = Math.max(2, Math.min(28, slotW * 0.64));
+        const xh = svgEl('line', { x1: 0, y1: pad.t, x2: 0, y2: pad.t + plotH, class: 'xh-line' });
+        const barEls = [];
+        const pts = [];
+
+        const labelStride = n <= 10 ? 1 : n <= 20 ? 2 : n <= 35 ? 5 : 10;
+
+        series.forEach((d, idx) => {
+          const v = Number(d.views) || 0;
+          const u = Number(d.uniques) || 0;
+          const cx = pad.l + idx * slotW + slotW / 2;
+          const bh = (v / yMax) * plotH;
+          const by = pad.t + plotH - bh;
+          const bar = svgEl('rect', {
+            x: (cx - barW / 2).toFixed(2),
+            y: by.toFixed(2),
+            width: barW.toFixed(2),
+            height: Math.max(0, bh).toFixed(2),
+            rx: 1,
+            class: 'bar-v'
+          });
+          barEls.push(bar);
+          frag.append(bar);
+
+          const uy = pad.t + plotH - (u / yMax) * plotH;
+          pts.push({ cx, uy, d, v, u });
+
+          if (idx % labelStride === 0 || idx === n - 1) {
+            const tx = svgEl('text', {
+              x: cx.toFixed(1),
+              y: H - 8,
+              'text-anchor': idx === 0 && n > 1 ? 'start' : idx === n - 1 && n > 1 ? 'end' : 'middle',
+              class: 'ax-lbl'
+            });
+            tx.textContent = d.date.slice(5);
+            frag.append(tx);
+          }
+        });
+
+        if (pts.length > 1) {
+          const dStr = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.cx.toFixed(2)},${p.uy.toFixed(2)}`).join(' ');
+          frag.append(svgEl('path', { d: dStr, class: 'ln-u' }));
+        }
+        if (pts.length <= 31) {
+          for (const p of pts) {
+            frag.append(svgEl('circle', { cx: p.cx.toFixed(2), cy: p.uy.toFixed(2), r: n <= 14 ? 3 : 2, class: 'pt-u' }));
+          }
+        }
+
+        frag.append(xh);
+
+        const clearHover = () => {
+          xh.classList.remove('is-on');
+          barEls.forEach((b) => b.classList.remove('is-hot'));
+          if (readout) readout.textContent = defaultSummary;
+        };
+
+        pts.forEach((p, idx) => {
+          const hit = svgEl('rect', {
+            x: (pad.l + idx * slotW).toFixed(2),
+            y: pad.t,
+            width: slotW.toFixed(2),
+            height: plotH,
+            class: 'hit-col',
+            tabindex: '0',
+            'aria-label': `${p.d.date}: ${fmtInt(p.v)} views, ${fmtInt(p.u)} unique visitors`
+          });
+          const activate = () => {
+            barEls.forEach((b, j) => b.classList.toggle('is-hot', j === idx));
+            xh.setAttribute('x1', p.cx.toFixed(2));
+            xh.setAttribute('x2', p.cx.toFixed(2));
+            xh.classList.add('is-on');
+            if (readout) {
+              readout.textContent = `${p.d.date} · ${fmtInt(p.v)} views · ${fmtInt(p.u)} uniques`;
+            }
+          };
+          hit.addEventListener('pointerenter', activate);
+          hit.addEventListener('focus', activate);
+          hit.addEventListener('blur', clearHover);
+          frag.append(hit);
+        });
+
+        svg.onpointerleave = clearHover;
+        svg.replaceChildren(frag);
+      };
+
+      const renderRecent = () => {
+        const tbody = $id('tbody-recent');
+        const cnt = $id('recent-count');
+        const filterVal = ($id('recent-filter')?.value || '').trim().toLowerCase();
+        if (!tbody) return;
+
+        const rawList = Array.isArray(state.data?.recent) ? state.data.recent : [];
+        const filtered = filterVal
+          ? rawList.filter((ev) =>
+              [ev.ts, ev.path, ev.ref, ev.cc, ev.dev, ev.scheme]
+                .some((v) => String(v || '').toLowerCase().includes(filterVal))
+            )
+          : rawList;
+
+        if (cnt) cnt.textContent = fmtInt(filtered.length);
+        if (!filtered.length) {
+          renderEmptyRow(tbody, 6, rawList.length ? 'No hits match filter' : 'No recent hits recorded');
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        for (const ev of filtered) {
+          const tr = document.createElement('tr');
+          const tsShort = String(ev.ts || '').replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+          tr.append(
+            el('td', 'm t-mid', tsShort || '—'),
+            el('td', 'm', ev.path || '/'),
+            el('td', 'm t-mid', ev.ref || 'direct'),
+            el('td', 'm', ev.cc || 'XX'),
+            el('td', '', ev.dev || 'desktop')
+          );
+          const tdSch = el('td');
+          const sch = (ev.scheme || 'unknown').toLowerCase();
+          const bCls = sch === 'dark' ? 'b-ac' : sch === 'light' ? 'b-wn' : 'b-mu';
+          tdSch.append(el('span', 'badge ' + bCls, sch));
+          tr.append(tdSch);
+          frag.append(tr);
+        }
+        tbody.replaceChildren(frag);
+      };
+
+      const renderDashboard = (data) => {
+        state.data = data;
+        const totals = data.totals || { views: 0, uniques: 0 };
+        const views = Number(totals.views) || 0;
+        const uniques = Number(totals.uniques) || 0;
+        const pages = Array.isArray(data.pages) ? data.pages : [];
+        const refs = Array.isArray(data.referrers) ? data.referrers : [];
+        const countries = Array.isArray(data.countries) ? data.countries : [];
+        const schemes = data.schemes || { dark: 0, light: 0, unknown: 0 };
+        const devices = data.devices || { desktop: 0, mobile: 0, tablet: 0 };
+
+        $id('stats-window').textContent = `${data.start || ''} → ${data.end || ''} · UTC`;
+        $id('kpi-views').textContent = fmtInt(views);
+        $id('kpi-views-sub').textContent = `${state.days === 1 ? 'last 24h' : state.days + 'd window'}`;
+        $id('kpi-uniques').textContent = fmtInt(uniques);
+        $id('kpi-ratio').textContent = uniques > 0 ? (views / uniques).toFixed(2) : '0.00';
+
+        const topPage = pages[0];
+        $id('kpi-top-path').textContent = topPage ? topPage.path : '—';
+        $id('kpi-top-path-sub').textContent = topPage ? `${fmtInt(topPage.views)} views (${fmtPct(topPage.views, views)})` : 'no views';
+
+        const schemeKnown = (Number(schemes.dark) || 0) + (Number(schemes.light) || 0);
+        $id('kpi-dark').textContent = fmtPct(Number(schemes.dark) || 0, schemeKnown || views);
+        $id('kpi-dark-sub').textContent = `${fmtInt(schemes.dark)} dark / ${fmtInt(schemes.light)} light`;
+
+        const dDesk = Number(devices.desktop) || 0;
+        const dMob = Number(devices.mobile) || 0;
+        const dTab = Number(devices.tablet) || 0;
+        const dSum = dDesk + dMob + dTab || views;
+        const deskPct = dSum > 0 ? Math.round((dDesk / dSum) * 100) : 0;
+        const mobPct = dSum > 0 ? Math.round((dMob / dSum) * 100) : 0;
+        $id('kpi-dev').textContent = `${deskPct}% / ${mobPct}%`;
+        $id('kpi-dev-sub').textContent = `${fmtInt(dDesk)}d · ${fmtInt(dMob)}m · ${fmtInt(dTab)}t`;
+
+        renderChart(data.daily, { views, uniques });
+        renderBreakdown('tbody-pages', 'cnt-pages', pages, 'path', views);
+        renderBreakdown('tbody-refs', 'cnt-refs', refs, 'ref', views);
+        renderBreakdown('tbody-countries', 'cnt-countries', countries, 'cc', views);
+
+        renderEnvBars('env-devices', 'Device Split', [
+          { label: 'Desktop', value: dDesk, color: 'var(--ac)' },
+          { label: 'Mobile', value: dMob, tone: 'ok' },
+          { label: 'Tablet', value: dTab, tone: 'wn' }
+        ], dSum);
+
+        const sTotal = (Number(schemes.dark) || 0) + (Number(schemes.light) || 0) + (Number(schemes.unknown) || 0);
+        renderEnvBars('env-schemes', 'Color Scheme', [
+          { label: 'Dark', value: Number(schemes.dark) || 0, color: 'var(--ac)' },
+          { label: 'Light', value: Number(schemes.light) || 0, tone: 'wn' },
+          { label: 'Unknown', value: Number(schemes.unknown) || 0, color: 'var(--fg-2)' }
+        ], sTotal);
+
+        renderRecent();
+      };
+
+      const loadStats = async () => {
+        const errBox = $id('stats-error');
+        const errMsg = $id('stats-error-msg');
+        if (errBox) errBox.hidden = true;
+        setStatus('load', 'SYNCING');
+
+        const query = `/api/stats?days=${state.days}`;
+        try {
+          let data;
+          let remote = false;
+          if (isLocalOrigin()) {
+            data = await fetchStatsJson(REMOTE_BASE + query);
+            remote = true;
+          } else {
+            try {
+              data = await fetchStatsJson(query);
+            } catch (primaryErr) {
+              data = await fetchStatsJson(REMOTE_BASE + query);
+              remote = true;
+            }
+          }
+          renderDashboard(data);
+          setStatus('ok', remote ? 'LIVE (REMOTE)' : 'LIVE');
+        } catch (err) {
+          setStatus('er', 'OFFLINE');
+          if (errMsg) errMsg.textContent = 'Stats API unavailable (' + (err.message || 'network error') + ').';
+          if (errBox) errBox.hidden = false;
+          if (!state.data) {
+            renderDashboard({
+              start: '—', end: '—',
+              totals: { views: 0, uniques: 0 },
+              daily: [], pages: [], referrers: [], countries: [],
+              devices: { desktop: 0, mobile: 0, tablet: 0 },
+              schemes: { dark: 0, light: 0, unknown: 0 },
+              recent: []
+            });
+          }
+        }
+      };
+
+      /* Controls wiring */
+      document.querySelectorAll('[data-days]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const nextDays = Number(btn.dataset.days) || 14;
+          if (nextDays === state.days) return;
+          state.days = nextDays;
+          document.querySelectorAll('[data-days]').forEach((b) => {
+            b.setAttribute('aria-pressed', String(b === btn));
+          });
+          loadStats();
+        });
+      });
+
+      $id('btn-refresh')?.addEventListener('click', loadStats);
+      $id('btn-retry')?.addEventListener('click', loadStats);
+      $id('recent-filter')?.addEventListener('input', renderRecent);
+
+      $id('btn-auto')?.addEventListener('click', (e) => {
+        state.auto = !state.auto;
+        const btn = e.currentTarget;
+        btn.setAttribute('aria-pressed', String(state.auto));
+        const dot = $id('auto-dot');
+        if (dot) dot.className = state.auto ? 'dot ok pulse' : 'dot mu';
+        if (state.timer) {
+          clearInterval(state.timer);
+          state.timer = null;
+        }
+        if (state.auto) {
+          state.timer = setInterval(loadStats, 30000);
+        }
+      });
+
+      loadStats();
+    })();
+  </script>
+  <script src="src/stats.js" defer></script>
+</body>
+</html>
