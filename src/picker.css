@@ -1,0 +1,309 @@
+/* =====================================================================
+   DENSE//DS — Custom Date / Time / Datetime Picker
+   Popover API + Anchor Positioning + CSS Grid
+   ===================================================================== */
+
+/* Suppress all native browser date/time indicators & spinners */
+.inp::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[data-picker]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+:root {
+  --pk-bg: var(--bg-1, #ffffff);
+  --pk-bg-subtle: var(--bg-2, #f7f8fa);
+  --pk-bg-hover: var(--bg-3, #eceef1);
+  --pk-ln: var(--ln-2, #cfd4da);
+  --pk-fg: var(--fg-0, #0d1015);
+  --pk-fg-muted: var(--fg-2, #6f7782);
+  --pk-ac: var(--ac-solid, #1b5fd9);
+  --pk-on-ac: var(--on-ac, #ffffff);
+  --pk-ac-bg: var(--ac-bg, #e8f0fe);
+  --pk-r: var(--r, 2px);
+  --pk-sh: var(--sh, 0 10px 25px -5px rgb(0 0 0 / .35));
+  --pk-cell: 26px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pk-bg: var(--bg-1, #0e1013);
+    --pk-bg-subtle: var(--bg-2, #13161a);
+    --pk-bg-hover: var(--bg-3, #1a1e23);
+    --pk-ln: var(--ln-2, #2e333b);
+    --pk-fg: var(--fg-0, #e8eaed);
+    --pk-fg-muted: var(--fg-2, #737b87);
+    --pk-ac: var(--ac-solid, #2563eb);
+    --pk-ac-bg: var(--ac-bg, #0f1f3d);
+  }
+}
+
+.dense-picker-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.dense-picker-trigger > input {
+  width: 100%;
+  padding-right: 24px !important;
+  font-family: var(--f-mono, ui-monospace, monospace);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dense-picker-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: grid;
+  place-content: center;
+  color: var(--pk-fg-muted);
+  border-radius: var(--pk-r);
+  z-index: 1;
+}
+
+.dense-picker-btn:hover,
+.dense-picker-btn:focus-visible {
+  color: var(--pk-fg);
+  background: var(--pk-bg-hover);
+}
+
+.dense-picker-popover {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--pk-ln);
+  border-radius: var(--pk-r);
+  background: var(--pk-bg);
+  color: var(--pk-fg);
+  box-shadow: var(--pk-sh);
+  font-family: var(--f-ui, system-ui, sans-serif);
+  font-size: 11px;
+  user-select: none;
+  inset: auto;
+  z-index: 9999;
+}
+
+.dense-picker-popover:not(:popover-open) {
+  display: none;
+}
+
+.dense-picker-popover:popover-open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@supports (position-anchor: --a) {
+  .dense-picker-popover {
+    top: anchor(bottom);
+    left: anchor(left);
+    margin-top: 2px;
+  }
+}
+
+.dense-picker-body {
+  display: flex;
+  gap: 8px;
+}
+
+.dense-picker-cal {
+  width: calc(var(--pk-cell) * 7 + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dense-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.dense-picker-header .dense-nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pk-r);
+  color: var(--pk-fg-muted);
+  cursor: pointer;
+  padding: 1px 5px;
+  font-size: 11px;
+}
+
+.dense-picker-header .dense-nav-btn:hover {
+  background: var(--pk-bg-hover);
+  color: var(--pk-fg);
+}
+
+.dense-picker-title {
+  display: flex;
+  gap: 4px;
+}
+
+.dense-picker-title select,
+.dense-picker-title input {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--pk-bg-subtle);
+  border: 1px solid var(--pk-ln);
+  color: var(--pk-fg);
+  border-radius: var(--pk-r);
+  padding: 1px 3px;
+  cursor: pointer;
+}
+
+.dense-picker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, var(--pk-cell));
+  text-align: center;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--pk-fg-muted);
+  padding-bottom: 2px;
+}
+
+.dense-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, var(--pk-cell));
+  gap: 1px;
+}
+
+.dense-picker-day {
+  width: var(--pk-cell);
+  height: var(--pk-cell);
+  display: grid;
+  place-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--pk-fg);
+  font-size: 11px;
+  font-family: var(--f-mono, ui-monospace, monospace);
+  border-radius: var(--pk-r);
+  cursor: pointer;
+  padding: 0;
+}
+
+.dense-picker-day:hover:not(:disabled) {
+  background: var(--pk-bg-hover);
+}
+
+.dense-picker-day:focus-visible {
+  outline: 1.5px solid var(--pk-ac);
+  outline-offset: -1px;
+}
+
+.dense-picker-day[aria-selected="true"] {
+  background: var(--pk-ac);
+  color: var(--pk-on-ac);
+  font-weight: 600;
+}
+
+.dense-picker-day.is-today:not([aria-selected="true"]) {
+  border-color: var(--pk-ac);
+  font-weight: 600;
+}
+
+.dense-picker-day.is-outside {
+  color: var(--pk-fg-muted);
+  opacity: 0.4;
+}
+
+.dense-picker-day:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.dense-picker-time {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 1px solid var(--pk-ln);
+  padding-left: 8px;
+}
+
+.dense-picker-time-title {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--pk-fg-muted);
+  text-align: center;
+}
+
+.dense-picker-time-cols {
+  display: flex;
+  gap: 4px;
+}
+
+.dense-time-col {
+  display: flex;
+  flex-direction: column;
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  border: 1px solid var(--pk-ln);
+  border-radius: var(--pk-r);
+  background: var(--pk-bg-subtle);
+  padding: 2px;
+}
+
+.dense-time-opt {
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--pk-fg);
+  font-family: var(--f-mono, ui-monospace, monospace);
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 2px;
+  text-align: center;
+}
+
+.dense-time-opt:hover {
+  background: var(--pk-bg-hover);
+}
+
+.dense-time-opt[aria-selected="true"] {
+  background: var(--pk-ac);
+  color: var(--pk-on-ac);
+}
+
+.dense-picker-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--pk-ln);
+  padding-top: 4px;
+  margin-top: 2px;
+}
+
+.dense-picker-btn-action {
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid var(--pk-ln);
+  border-radius: var(--pk-r);
+  background: var(--pk-bg-subtle);
+  color: var(--pk-fg);
+  cursor: pointer;
+}
+
+.dense-picker-btn-action:hover {
+  background: var(--pk-bg-hover);
+}

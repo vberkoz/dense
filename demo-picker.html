@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DENSE//DS — Custom Date/Time Pickers</title>
+  <link rel="stylesheet" href="src/ds.css">
+  <link rel="stylesheet" href="src/picker.css">
+  <style>
+    body {
+      padding: 32px;
+      font-family: var(--f-ui, system-ui, sans-serif);
+      background: var(--bg-0, #f2f3f5);
+      color: var(--fg-0, #0d1015);
+    }
+    .card {
+      max-width: 520px;
+      margin: 0 auto;
+      background: var(--bg-1, #fff);
+      border: 1px solid var(--ln-2, #cfd4da);
+      border-radius: var(--r-2, 4px);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--fg-2, #6f7782);
+    }
+    .inp {
+      height: 28px;
+      padding: 4px 8px;
+      border: 1px solid var(--ln-2, #cfd4da);
+      border-radius: var(--r, 2px);
+      background: var(--bg-2, #f7f8fa);
+      color: var(--fg-0, #0d1015);
+      box-sizing: border-box;
+    }
+    #log {
+      margin-top: 12px;
+      padding: 8px;
+      background: var(--bg-2, #f7f8fa);
+      border: 1px solid var(--ln, #e3e6ea);
+      border-radius: var(--r, 2px);
+      font-family: var(--f-mono, monospace);
+      font-size: 11px;
+      min-height: 48px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="margin: 0; font-size: 15px; font-weight: 700;">Replaced Native Date/Time Pickers</h2>
+
+    <form id="picker-demo-form" onsubmit="event.preventDefault();">
+      <!-- Standard native date, time, and datetime-local inputs -->
+      <div class="field-group">
+        <label for="date-input">Date Input (type="date")</label>
+        <input type="date" id="date-input" name="booking_date" class="inp" value="2026-11-17" />
+      </div>
+
+      <div class="field-group" style="margin-top: 12px;">
+        <label for="time-input">Time Input (type="time")</label>
+        <input type="time" id="time-input" name="shift_time" class="inp" value="19:50" />
+      </div>
+
+      <div class="field-group" style="margin-top: 12px;">
+        <label for="datetime-input">Datetime Input (type="datetime-local")</label>
+        <input type="datetime-local" id="datetime-input" name="telemetry_ts" class="inp" value="2026-11-17T19:50" />
+      </div>
+    </form>
+
+    <div>
+      <label>Dispatched Events Log</label>
+      <div id="log">Awaiting input...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initPickers } from './src/picker.js';
+
+    // Automatically finds and replaces all native date/time/datetime-local inputs
+    initPickers();
+
+    const log = document.getElementById('log');
+    document.querySelectorAll('input[data-picker]').forEach(input => {
+      input.addEventListener('change', (e) => {
+        log.textContent = `[${e.target.name}] change -> "${e.target.value}"\n` + log.textContent;
+      });
+      input.addEventListener('input', (e) => {
+        log.textContent = `[${e.target.name}] input -> "${e.target.value}"\n` + log.textContent;
+      });
+    });
+  </script>
+</body>
+</html>
