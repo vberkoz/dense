@@ -4,3 +4,6 @@ Thumbs.db
 .idea/
 *.log
 .env*
+.cfn-packaged.yaml
+__pycache__/
+*.pyc

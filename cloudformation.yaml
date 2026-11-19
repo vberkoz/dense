@@ -63,6 +63,12 @@ Resources:
             OriginAccessControlId: !GetAtt SiteOAC.Id
             S3OriginConfig:
               OriginAccessIdentity: ''
+          - Id: ApiOrigin
+            DomainName: !Sub '${StatsApi}.execute-api.${AWS::Region}.amazonaws.com'
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols:
+                - TLSv1.2
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
           ViewerProtocolPolicy: redirect-to-https
@@ -75,6 +81,24 @@ Resources:
           Compress: true
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
           ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: ApiOrigin
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            CachedMethods:
+              - GET
+              - HEAD
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: !Ref StatsApiOriginRequestPolicy
         ViewerCertificate:
           AcmCertificateArn: !Ref SiteCertificate
           SslSupportMethod: sni-only
@@ -96,6 +120,153 @@ Resources:
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub 'arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${SiteDistribution}'
+          - Sid: DenyCloudFrontAccessToCfnArtifacts
+            Effect: Deny
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource:
+              - !Sub '${SiteBucket.Arn}/_cfn-artifacts'
+              - !Sub '${SiteBucket.Arn}/_cfn-artifacts/*'
+
+  StatsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: false
+
+  StatsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-stats'
+      RetentionInDays: 14
+
+  StatsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StatsDynamoDBPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                Resource: !GetAtt StatsTable.Arn
+        - PolicyName: StatsLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt StatsLogGroup.Arn
+
+  StatsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: stats.handler
+      Role: !GetAtt StatsLambdaRole.Arn
+      Code: lambda/
+      MemorySize: 256
+      Timeout: 10
+      LoggingConfig:
+        LogGroup: !Ref StatsLogGroup
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref StatsTable
+          HASH_SALT: !Sub '${AWS::StackId}'
+
+  StatsApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-stats-api'
+      ProtocolType: HTTP
+
+  StatsApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref StatsApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt StatsFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  StatsCollectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref StatsApi
+      RouteKey: 'POST /api/collect'
+      Target: !Sub 'integrations/${StatsApiIntegration}'
+
+  StatsReadRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref StatsApi
+      RouteKey: 'GET /api/stats'
+      Target: !Sub 'integrations/${StatsApiIntegration}'
+
+  StatsApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref StatsApi
+      StageName: '$default'
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 25
+
+  StatsApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref StatsFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StatsApi}/*/*/api/*'
+
+  StatsApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub '${AWS::StackName}-api-orp'
+        QueryStringsConfig:
+          QueryStringBehavior: all
+        CookiesConfig:
+          CookieBehavior: none
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - CloudFront-Viewer-Country
+            - CloudFront-Is-Mobile-Viewer
+            - CloudFront-Is-Tablet-Viewer
+            - CloudFront-Is-Desktop-Viewer
+            - Origin
+            - Referer
+            - User-Agent
 
   SiteDnsRecords:
     Type: AWS::Route53::RecordSetGroup
@@ -124,3 +295,11 @@ Outputs:
     Value: !GetAtt SiteDistribution.DomainName
   SiteUrl:
     Value: !Sub 'https://${DomainName}'
+  StatsTableName:
+    Value: !Ref StatsTable
+  StatsFunctionName:
+    Value: !Ref StatsFunction
+  StatsApiUrl:
+    Value: !Sub 'https://${StatsApi}.execute-api.${AWS::Region}.amazonaws.com'
+  StatsPageUrl:
+    Value: !Sub 'https://${DomainName}/stats.html'
