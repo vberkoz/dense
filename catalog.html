@@ -749,6 +749,9 @@ dialog:modal { overscroll-behavior: contain; }
       <a href="demo-inventory.html" class="nav-i" title="Supply Chain Inventory">
         <i data-lucide="boxes"></i><span class="nav-t">Supply Inventory</span><span class="nav-c">96</span>
       </a>
+      <a href="stats.html" class="nav-i" title="Live Traffic Stats">
+        <i data-lucide="trending-up"></i><span class="nav-t">Stats</span><span class="nav-c">LIVE</span>
+      </a>
     </nav>
     <div class="rail-foot">
       <button type="button" class="nav-i w-full" data-action="theme" title="Toggle Dark / Light Scheme">
@@ -781,6 +784,7 @@ dialog:modal { overscroll-behavior: contain; }
       <a href="demo-telemetry.html" class="btn btn-sm hide-md"><i data-lucide="server" class="i12"></i> Telemetry</a>
       <a href="demo-ledger.html" class="btn btn-sm hide-md"><i data-lucide="landmark" class="i12"></i> Ledger</a>
       <a href="demo-inventory.html" class="btn btn-sm hide-md"><i data-lucide="boxes" class="i12"></i> Inventory</a>
+      <a href="stats.html" class="btn btn-sm hide-md"><i data-lucide="trending-up" class="i12"></i> Stats</a>
       <button type="button" class="btn btn-ic" data-action="theme" aria-label="Toggle color theme" title="Toggle Dark / Light Mode">
         <i data-lucide="sun" class="i14 when-dark"></i>
         <i data-lucide="moon" class="i14 when-light"></i>
@@ -3111,5 +3115,6 @@ dialog:modal { overscroll-behavior: contain; }
   $('#bulk-purge').addEventListener('click', () => openDialog('cat-modal'));
 })();
 </script>
+<script src="src/stats.js" defer></script>
 </body>
 </html>
