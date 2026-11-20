@@ -5,6 +5,13 @@
    ===================================================================== */
 (() => {
   'use strict';
+  if (!window.__dsZoomLock) {
+    window.__dsZoomLock = true;
+    const noZoom = (e) => e.preventDefault();
+    document.addEventListener('gesturestart', noZoom, { passive: false });
+    document.addEventListener('gesturechange', noZoom, { passive: false });
+    document.addEventListener('touchmove', (e) => { if (e.touches && e.touches.length > 1 && e.cancelable) e.preventDefault(); }, { passive: false });
+  }
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -118,7 +125,7 @@
     const r = anchor.getBoundingClientRect();
     const pw = p.offsetWidth, ph = p.offsetHeight;
     let left = p.dataset.align === 'end' ? r.right - pw : r.left;
-    left = clamp(left, 4, innerWidth - pw - 4);
+    left = clamp(left, 4, Math.max(4, innerWidth - pw - 4));
     let top = r.bottom + 3;
     if (top + ph > innerHeight - 4) top = Math.max(4, r.top - ph - 3);
     p.style.left = left + 'px';
@@ -1232,11 +1239,21 @@
       };
 
       const updatePos = () => {
-        if (!CSS.supports('position-anchor: --a')) {
-          const rect = input.getBoundingClientRect();
+        popover.style.left = '';
+        popover.style.top = '';
+        popover.style.marginTop = '';
+        const rect = input.getBoundingClientRect();
+        const pr = popover.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        if (!CSS.supports('position-anchor: --a') || pr.right > vw - 8 || pr.left < 8 || pr.bottom > vh - 8 || pr.top < 8) {
           popover.style.position = 'fixed';
-          popover.style.top = `${rect.bottom + 2}px`;
-          popover.style.left = `${rect.left}px`;
+          popover.style.marginTop = '0';
+          const left = Math.max(8, Math.min(rect.left, vw - pr.width - 8));
+          const top = (rect.bottom + 2 + pr.height > vh - 8 && rect.top - pr.height - 2 >= 8)
+            ? rect.top - pr.height - 2
+            : Math.max(8, Math.min(rect.bottom + 2, vh - pr.height - 8));
+          popover.style.left = `${left}px`;
+          popover.style.top = `${top}px`;
         }
       };
 

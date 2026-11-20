@@ -2,11 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
   <title>DENSE//DS — Custom Date/Time Pickers</title>
   <link rel="stylesheet" href="src/ds.css">
   <link rel="stylesheet" href="src/picker.css">
   <style>
+    html, body {
+      height: auto;
+      min-height: 100%;
+      max-width: 100%;
+      overflow-y: visible;
+      overflow-x: clip;
+    }
     body {
       padding: 32px;
       font-family: var(--f-ui, system-ui, sans-serif);
@@ -15,6 +22,8 @@
     }
     .card {
       max-width: 520px;
+      width: 100%;
+      min-width: 0;
       margin: 0 auto;
       background: var(--bg-1, #fff);
       border: 1px solid var(--ln-2, #cfd4da);
@@ -28,6 +37,8 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+      min-width: 0;
+      max-width: 100%;
     }
     label {
       font-size: 11px;
@@ -55,6 +66,11 @@
       font-size: 11px;
       min-height: 48px;
       white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .card { padding: 14px; }
     }
   </style>
 </head>
@@ -88,6 +104,14 @@
 
   <script type="module">
     import { initPickers } from './src/picker.js';
+
+    if (!window.__dsZoomLock) {
+      window.__dsZoomLock = true;
+      const noZoom = (e) => e.preventDefault();
+      document.addEventListener('gesturestart', noZoom, { passive: false });
+      document.addEventListener('gesturechange', noZoom, { passive: false });
+      document.addEventListener('touchmove', (e) => { if (e.touches && e.touches.length > 1 && e.cancelable) e.preventDefault(); }, { passive: false });
+    }
 
     // Automatically finds and replaces all native date/time/datetime-local inputs
     initPickers();

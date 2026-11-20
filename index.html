@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
 <meta name="color-scheme" content="dark">
 <script>try{document.querySelector('meta[name="color-scheme"]').content=localStorage.getItem('ds-scheme')||'dark';}catch(e){}</script>
 <title>DENSE//DS — Ultra-Condensed Vanilla Design System</title>
@@ -12,8 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/ds.css">
 <style>
-  html, body { height: auto; min-height: 100%; overflow: visible; }
-  body { overflow-x: clip; }
+  html, body { height: auto; min-height: 100%; max-width: 100%; overflow-y: visible; overflow-x: clip; }
 
   .wrap { width: 100%; max-width: 1240px; margin-inline: auto; padding-inline: 12px; }
   .site-main { display: flex; flex-direction: column; gap: 20px; padding-block: 16px 28px; }
@@ -92,7 +91,7 @@
   }
   .wb-kpis { border-bottom: 1px solid var(--ln); }
   .wb-tbl-wrap {
-    overflow-x: auto; background: var(--bg-1);
+    overflow-x: auto; max-width: 100%; touch-action: pan-x pan-y; background: var(--bg-1);
     --row-py: 3px; --row-fs: 11.5px; --th-h: 26px;
   }
   .wb-tbl-wrap[data-density="ultra"] { --row-py: 1px; --row-fs: 11px; --th-h: 22px; }
@@ -103,14 +102,14 @@
 
   /* Section chrome & grids */
   .sec-head {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
     padding-bottom: 6px; border-bottom: 1px solid var(--ln); margin-bottom: 8px;
   }
   .sec-title { font: 700 13px/1 var(--f-cond); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-0); }
   .sec-sub { font: 500 11px/1 var(--f-mono); color: var(--fg-2); }
 
   .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-  .grid-demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+  .grid-demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 8px; }
 
   .pillar .panel-b, .demo-card .panel-b { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; }
   .pillar p, .demo-card p { font-size: 11.5px; line-height: 1.4; color: var(--fg-1); }
@@ -560,7 +559,7 @@
 &lt;html lang="en"&gt;
 &lt;head&gt;
   &lt;meta charset="utf-8"&gt;
-  &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"&gt;
   &lt;meta name="color-scheme" content="dark"&gt;
   &lt;script&gt;try{document.querySelector('meta[name="color-scheme"]').content=localStorage.getItem('ds-scheme')||'dark';}catch(e){}&lt;/script&gt;
   &lt;link rel="stylesheet" href="src/ds.css"&gt;

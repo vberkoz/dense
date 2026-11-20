@@ -271,11 +271,21 @@ export function initPicker(input) {
   };
 
   const updatePos = () => {
-    if (!CSS.supports('position-anchor: --a')) {
-      const rect = input.getBoundingClientRect();
+    popover.style.left = '';
+    popover.style.top = '';
+    popover.style.marginTop = '';
+    const rect = input.getBoundingClientRect();
+    const pr = popover.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if (!CSS.supports('position-anchor: --a') || pr.right > vw - 8 || pr.left < 8 || pr.bottom > vh - 8 || pr.top < 8) {
       popover.style.position = 'fixed';
-      popover.style.top = `${rect.bottom + 2}px`;
-      popover.style.left = `${rect.left}px`;
+      popover.style.marginTop = '0';
+      const left = Math.max(8, Math.min(rect.left, vw - pr.width - 8));
+      const top = (rect.bottom + 2 + pr.height > vh - 8 && rect.top - pr.height - 2 >= 8)
+        ? rect.top - pr.height - 2
+        : Math.max(8, Math.min(rect.bottom + 2, vh - pr.height - 8));
+      popover.style.left = `${left}px`;
+      popover.style.top = `${top}px`;
     }
   };
 

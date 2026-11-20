@@ -97,6 +97,10 @@ input[data-picker]::-webkit-calendar-picker-indicator {
   user-select: none;
   inset: auto;
   z-index: 9999;
+  box-sizing: border-box;
+  max-inline-size: calc(100dvw - 16px);
+  max-block-size: calc(100dvh - 16px);
+  overflow: auto;
 }
 
 .dense-picker-popover:not(:popover-open) {
@@ -114,6 +118,7 @@ input[data-picker]::-webkit-calendar-picker-indicator {
     top: anchor(bottom);
     left: anchor(left);
     margin-top: 2px;
+    position-try-fallbacks: flip-inline, flip-block;
   }
 }
 
@@ -124,6 +129,7 @@ input[data-picker]::-webkit-calendar-picker-indicator {
 
 .dense-picker-cal {
   width: calc(var(--pk-cell) * 7 + 12px);
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -306,4 +312,19 @@ input[data-picker]::-webkit-calendar-picker-indicator {
 
 .dense-picker-btn-action:hover {
   background: var(--pk-bg-hover);
+}
+
+@media (max-width: 480px) {
+  .dense-picker-body {
+    flex-direction: column;
+  }
+  .dense-picker-time {
+    border-left: 0;
+    border-top: 1px solid var(--pk-ln);
+    padding-left: 0;
+    padding-top: 6px;
+  }
+  .dense-picker-time-cols {
+    justify-content: center;
+  }
 }
